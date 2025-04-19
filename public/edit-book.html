@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>编辑图书 - 图书馆管理系统</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .error {
+            color: red;
+            margin-top: 10px;
+        }
+        .success {
+            color: green;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>编辑图书</h1>
+    <form id="editBookForm">
+        <input type="hidden" id="book_id" name="book_id">
+        <div class="form-group">
+            <label for="book_name">书名：</label>
+            <input type="text" id="book_name" name="book_name" required>
+        </div>
+        <div class="form-group">
+            <label for="book_status">状态：</label>
+            <input type="text" id="book_status" name="book_status" required>
+        </div>
+        <div class="form-group">
+            <label for="book_location">位置：</label>
+            <input type="text" id="book_location" name="book_location" required>
+        </div>
+        <button type="submit">保存修改</button>
+    </form>
+    <div id="message"></div>
+
+    <p><a href="/index.html">返回图书列表</a></p>
+
+    <script>
+        // 从URL获取图书ID并验证
+        function validateAndGetBookId() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const bookId = urlParams.get('book_ID');
+
+            // 如果没有图书ID或ID为undefined，返回列表页
+            if (!bookId || bookId === 'undefined') {
+                alert('无效的图书ID，即将返回列表页');
+                window.location.href = '/index.html';
+                return null;
+            }
+            return bookId;
+        }
+
+        // 获取图书详情的函数
+        async function fetchBookDetails() {
+            const bookId = validateAndGetBookId();
+            if (!bookId) return;
+
+            try {
+                const response = await fetch(`http://localhost:3000/api/books/${bookId}`);
+                if (!response.ok) {
+                    throw new Error('获取图书信息失败');
+                }
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    const bookData = result.data;
+                    // 填充表单数据
+                    document.getElementById('book_id').value = bookId;
+                    document.getElementById('book_name').value = bookData.book_name;
+                    document.getElementById('book_status').value = bookData.book_status;
+                    document.getElementById('book_location').value = bookData.book_location;
+                } else {
+                    throw new Error(result.error || '获取图书信息失败');
+                }
+            } catch (error) {
+                const messageDiv = document.getElementById('message');
+                messageDiv.className = 'error';
+                messageDiv.textContent = `获取图书信息失败：${error.message}`;
+            }
+        }
+
+        // 使用立即执行函数包装初始化逻辑
+        (async function initializeEditBook() {
+            const bookId = validateAndGetBookId();
+            if (!bookId) return;
+
+            // 获取图书信息
+            await fetchBookDetails();
+
+            // 处理表单提交
+            document.getElementById('editBookForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const messageDiv = document.getElementById('message');
+                
+                try {
+                    const formData = {
+                        book_name: document.getElementById('book_name').value.trim(),
+                        book_status: document.getElementById('book_status').value.trim(),
+                        book_location: document.getElementById('book_location').value.trim()
+                    };
+
+                    // 验证所有字段都不为空
+                    for (const [key, value] of Object.entries(formData)) {
+                        if (!value) {
+                            throw new Error(`${key} 不能为空`);
+                        }
+                    }
+
+                    const response = await fetch(`http://localhost:3000/api/books/${bookId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(formData)
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || '服务器响应错误');
+                    }
+
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        messageDiv.className = 'success';
+                        messageDiv.textContent = '图书修改成功！';
+                        // 延迟1秒后返回列表页
+                        setTimeout(() => {
+                            window.location.href = '/index.html';
+                        }, 1000);
+                    } else {
+                        throw new Error(result.error || '修改图书失败');
+                    }
+                } catch (error) {
+                    messageDiv.className = 'error';
+                    messageDiv.textContent = `修改失败：${error.message || '未知错误'}`;
+                }
+            });
+        })();
+    </script>
+</body>
+</html>
