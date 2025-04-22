@@ -1,0 +1,17 @@
+{
+  "version": 2,
+  "builds": [
+    { "src": "src/server.js", "use": "@vercel/node" },
+    { "src": "public/**", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/api/(.*)", "dest": "src/server.js" },
+    { "src": "/", "dest": "public/student.html" },
+    { "src": "/(.*)", "dest": "public/$1" }
+  ],
+  "env": {
+    "VIKA_TOKEN": "usklOkVBR3jJKeOzrMnqWVX",
+    "DATASHEET_ID": "dstT6xja6Wv3JoKavf",
+    "VIEW_ID": "viwHXUXtsZlP3"
+  }
+}
