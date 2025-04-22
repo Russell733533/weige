@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>新增图书 - 图书馆管理系统</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .error {
+            color: red;
+            margin-top: 10px;
+        }
+        .success {
+            color: green;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>新增图书</h1>
+    <form id="addBookForm">
+        <div class="form-group">
+            <label for="book_name">书名：</label>
+            <input type="text" id="book_name" name="book_name" required>
+        </div>
+        <div class="form-group">
+            <label for="book_status">状态：</label>
+            <input type="text" id="book_status" name="book_status" value="未被借走" required>
+        </div>
+        <div class="form-group">
+            <label for="book_location">位置：</label>
+            <input type="text" id="book_location" name="book_location" required>
+        </div>
+        <button type="submit">添加图书</button>
+    </form>
+    <div id="message"></div>
+
+    <p><a href="/index.html">返回图书列表</a></p>
+
+    <script src="/config.js"></script>
+    <script>
+        document.getElementById('addBookForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const messageDiv = document.getElementById('message');
+            
+            try {
+                const formData = {
+                    book_name: document.getElementById('book_name').value.trim(),
+                    book_status: document.getElementById('book_status').value.trim(),
+                    book_location: document.getElementById('book_location').value.trim()
+                };
+
+                // 验证所有字段都不为空
+                for (const [key, value] of Object.entries(formData)) {
+                    if (!value) {
+                        throw new Error(`${key} 不能为空`);
+                    }
+                }
+
+                const response = await fetch(window.APP_CONFIG.API_BASE_URL + '/api/books', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || '服务器响应错误');
+                }
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    messageDiv.className = 'success';
+                    messageDiv.textContent = '图书添加成功！';
+                    document.getElementById('addBookForm').reset();
+                } else {
+                    throw new Error(result.error || '添加图书失败');
+                }
+            } catch (error) {
+                messageDiv.className = 'error';
+                messageDiv.textContent = `添加失败：${error.message || '未知错误'}`;
+            }
+        });
+    </script>
+</body>
+</html>

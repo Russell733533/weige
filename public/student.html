@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图书管理系统 - 学生端</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .book-list {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .book-list th, .book-list td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        .book-list th {
+            background-color: #f4f4f4;
+        }
+        .book-list tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .book-list tr:hover {
+            background-color: #f5f5f5;
+        }
+        .status-button {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+        }
+        .status-button:hover {
+            background-color: #45a049;
+        }
+        .status-button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        #message {
+            margin: 20px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #dff0d8;
+            color: #3c763d;
+            border: 1px solid #d6e9c6;
+        }
+        .error {
+            background-color: #f2dede;
+            color: #a94442;
+            border: 1px solid #ebccd1;
+        }
+    </style>
+</head>
+<body>
+    <h1>图书管理系统 - 学生端</h1>
+    <div id="message"></div>
+    <table class="book-list">
+        <thead>
+            <tr>
+                <th>书名</th>
+                <th>状态</th>
+                <th>位置</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody id="bookList"></tbody>
+    </table>
+
+    <script>
+        // 获取图书列表
+        async function fetchBooks() {
+            try {
+                const response = await fetch(window.APP_CONFIG.API_BASE_URL + '/api/books');
+                if (!response.ok) {
+                    throw new Error('获取图书列表失败');
+                }
+                const result = await response.json();
+                if (result.success) {
+                    displayBooks(result.data);
+                } else {
+                    throw new Error(result.error || '获取图书列表失败');
+                }
+            } catch (error) {
+                showMessage(error.message, 'error');
+            }
+        }
+
+        // 页面加载完成后获取图书列表并启动定时刷新
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchBooks();
+            // 每30秒自动刷新一次数据
+            setInterval(fetchBooks, 30000);
+        });
+
+        // 显示图书列表
+        function displayBooks(books) {
+            const bookList = document.getElementById('bookList');
+            bookList.innerHTML = '';
+            
+            books.forEach(book => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${book.book_name}</td>
+                    <td>${book.book_status}</td>
+                    <td>${book.book_location}</td>
+                    <td>
+                        <button 
+                            class="status-button" 
+                            onclick="updateBookStatus('${book.id}', '${book.book_status === '未被借走' ? '已被借走' : '未被借走'}')"
+                            ${book.book_status !== '未被借走' && book.book_status !== '已被借走' ? 'disabled' : ''}
+                        >
+                            ${book.book_status === '未被借走' ? '借阅' : '归还'}
+                        </button>
+                    </td>
+                `;
+                bookList.appendChild(row);
+            });
+        }
+
+        // 更新图书状态
+        async function updateBookStatus(bookId, newStatus) {
+            try {
+                const response = await fetch(`${window.APP_CONFIG.API_BASE_URL}/api/books/${bookId}/status`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ status: newStatus })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || '更新状态失败');
+                }
+
+                const result = await response.json();
+                if (result.success) {
+                    // 使用更可靠的方式获取DOM元素
+                    const button = document.querySelector(`button[onclick*="'${bookId}'"]`);
+                    if (!button) {
+                        throw new Error('无法找到对应的按钮元素');
+                    }
+                    const row = button.closest('tr');
+                    if (!row) {
+                        throw new Error('无法找到对应的行元素');
+                    }
+                    const statusCell = row.querySelector('td:nth-child(2)');
+                    if (!statusCell) {
+                        throw new Error('无法找到状态单元格');
+                    }
+
+                    // 更新DOM元素
+                    statusCell.textContent = newStatus;
+                    button.textContent = newStatus === '未被借走' ? '借阅' : '归还';
+                    button.setAttribute('onclick', `updateBookStatus('${bookId}', '${newStatus === '未被借走' ? '已被借走' : '未被借走'}')`);
+                    showMessage('图书状态更新成功', 'success');
+                } else {
+                    throw new Error(result.error || '更新状态失败');
+                }
+            } catch (error) {
+                showMessage(error.message, 'error');
+            }
+        }
+
+        // 显示消息
+        function showMessage(message, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = message;
+            messageDiv.className = type;
+            setTimeout(() => {
+                messageDiv.textContent = '';
+                messageDiv.className = '';
+            }, 3000);
+        }
+
+        // 页面加载时获取图书列表
+        fetchBooks();
+    </script>
+</body>
+</html>
